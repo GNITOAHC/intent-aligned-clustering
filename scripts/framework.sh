@@ -14,4 +14,4 @@ echo "Prompt: $PROMPT_STR"
 
 uv run python -m src.main -o $OUTPUT_DIR -d $DOC_CSV -p "$PROMPT_STR" -m $MODEL
 
-# bash scripts/framework.sh sample.csv prompt.txt out_framework
+# bash scripts/framework.sh sample.csv prompt.txt out_framework gpt-oss-20b
