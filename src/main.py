@@ -355,7 +355,7 @@ def main(args):
 
         with open(out_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["document_id", "cluster_label", "text"])
+            writer.writerow(["id", "label", "text"])
 
             for cluster_label, doc_ids in clusters.items():
                 for doc_id in doc_ids:
