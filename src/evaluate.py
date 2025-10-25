@@ -31,8 +31,8 @@ def evaluate(input_csv, ground_truth_csv):
     print("Classification Report:")
     # from sklearn.metrics import classification_report
 
-    print(label_true)
-    print(label_pred)
+    # print(label_true)
+    # print(label_pred)
     results = evaluator.evaluate(label_true, label_pred)
     print(results)
 
