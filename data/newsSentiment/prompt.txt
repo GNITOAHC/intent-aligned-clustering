@@ -1,0 +1,1 @@
+Represent the primary stance or viewpoint of articles for clustering and cluster them into positive, negative, neutral.

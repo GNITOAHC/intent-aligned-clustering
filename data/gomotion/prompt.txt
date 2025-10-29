@@ -1,0 +1,5 @@
+Represent the positive and negative emotions expressed for clustering, such as following:
+- **Negative Emotions:** anger, disappointment, disgust, embarrassment.
+- **Positive Emotions:** admiration, amusement, approval, gratitude, pride.
+
+Please cluster them into 14 groups, with each group containing at least 3 items.

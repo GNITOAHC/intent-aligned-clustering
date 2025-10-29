@@ -1,0 +1,1 @@
+Represent the content types of QA documents for clustering, such as  Business, Society , Mathematics, Computer, Sports, Music, Politics, Government, Health. Please cluster them into 10 groups, with each group containing at least 3 items and representing a distinct content type.

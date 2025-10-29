@@ -1,0 +1,1 @@
+Cluster the articles by their specific newsgroup community, for example, graphics, hardware, sport, medical, politics. Please cluster them into 20 groups. Each group should contain at least 3 articles.

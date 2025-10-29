@@ -1,0 +1,1 @@
+Represent the fine-grained sarcastic emotions for clustering, for example, sarcasm, irony, satire, understatement, overstatement, rhetorical_question. Please cluster them into 6 groups, with each group containing at least 3 items.
