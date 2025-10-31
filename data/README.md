@@ -1,0 +1,13 @@
+- label map 
+    - arxiv(9)
+        - ```corpus3/arxiv/label.txt```
+    - 20news(12)
+        - 1,comp.graphics. 3,comp.sys.ibm.pc.hardware. 7,rec.autos. 9,rec.sport.baseball. 10,rec.sport.hockey. 11,sci.crypt. 12,sci.electronics. 13,sci.med. 14,sci.spacem. 15,soc.religion.christian. 16,talk.politics.guns. 17,talk.politics.mideast
+        - graphics, hardware, autos, baseball, hockey, crypt, electronics, med, space, christian, guns, mideast
+        - 🌟 ["Graphics", "Hardware", "Cars", "Baseball", "Hockey", "Cybersecurity", "Electronics", "Health", "Space", "Religion", "Gun Control & Rights", "Middle East"]
+    - goemotion(13)
+        - approval admiration gratitude amusement joy love pride disappointment anger sadness disgust fear embarrassment
+    - newsSentiment(3)(5)
+        - science, technology, sports, business, entertainment
+    - sarcasm(6)
+    - yahoo(10)
