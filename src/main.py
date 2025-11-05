@@ -10,12 +10,12 @@ from src.prompts import (
     create_cluster_refinement_prompt,
 )
 from src.dataset import IACDataset
-from src.utils.llm import OuterMedusaLLM, OpenAILLM
+from src.utils.llm import LLM, OuterMedusaLLM, OpenAILLM
 from src.utils.shared import target_cluster_count, get_output_files
 
 DEFAULT_PROVIDER = "outer_medusa"
 DEFAULT_MODEL = "gpt-oss-20b"
-llm = OuterMedusaLLM()
+llm = LLM()
 
 
 def normalize_label(label: str) -> str:
@@ -405,9 +405,10 @@ if __name__ == "__main__":
     if args.prompt is None:
         args.prompt = input("Enter your prompt: ")
 
-    if args.provider != DEFAULT_PROVIDER:
-        if args.provider != "openai":
-            llm = OpenAILLM()
+    if args.provider == "openai":
+        llm = OpenAILLM()
+    elif args.provider == "outer_medusa":
+        llm = OuterMedusaLLM()
 
     if args.model != DEFAULT_MODEL:
         llm.change_model(args.model)

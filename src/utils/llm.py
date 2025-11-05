@@ -4,6 +4,19 @@ import http.client
 import os
 
 
+class LLM:
+    def __init__(self, model="gpt-oss-20b"):
+        self.cum_prompt_tokens = 0
+        self.cum_completion_tokens = 0
+        pass
+
+    def generate(self, prompt: str, sys_prompt: str | None = None):
+        return "", 0, 0
+
+    def change_model(self, model: str):
+        pass
+
+
 class OuterMedusaLLM:
     def __init__(self, model="gpt-oss-20b"):
         self.model = model
@@ -165,10 +178,10 @@ class OpenAILLM:
         )
 
         if c.usage and c.usage.completion_tokens:
-            self.completion_tokens += c.usage.completion_tokens
+            self.cum_completion_tokens += c.usage.completion_tokens
 
         if c.usage and c.usage.prompt_tokens:
-            self.prompt_tokens += c.usage.prompt_tokens
+            self.cum_prompt_tokens += c.usage.prompt_tokens
 
         return (
             str(c.choices[0].message.content),
