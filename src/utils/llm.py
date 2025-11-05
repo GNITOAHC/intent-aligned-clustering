@@ -73,6 +73,9 @@ class OuterMedusaLLM:
         else:
             raise ValueError(f"Model {model} not found in available models")
 
+    def __str__(self):
+        return f"OuterMedusaLLM(model={self.model})"
+
     def _get_connection(self):
         return http.client.HTTPSConnection(self.host)
 
@@ -143,6 +146,9 @@ class OpenAILLM:
         self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=base_url)
 
         print("Connected to OpenAI")
+
+    def __str__(self):
+        return f"OpenAILLM(model={self.model})"
 
     def change_model(self, model: str):
         self.model = model
