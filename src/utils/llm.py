@@ -1,4 +1,5 @@
 from ollama import Client
+from openai import OpenAI
 import http.client
 import os
 
@@ -6,6 +7,8 @@ import os
 class OuterMedusaLLM:
     def __init__(self, model="gpt-oss-20b"):
         self.model = model
+        self.cum_prompt_tokens = 0
+        self.cum_completion_tokens = 0
 
         from dotenv import load_dotenv
 
@@ -54,7 +57,7 @@ class OuterMedusaLLM:
 
         conn = self._get_connection()
         try:
-            response, response_data = self._get_response(conn, "GET", f"/v1/models")
+            response, response_data = self._get_response(conn, "GET", "/v1/models")
             if response.status != 200:
                 raise ValueError(
                     f"Request failed: {response.status} {response.reason} - {response_data}"
@@ -110,9 +113,62 @@ class OuterMedusaLLM:
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             prompt_eval_count = data.get("usage", {}).get("prompt_tokens", 0)
             eval_count = data.get("usage", {}).get("completion_tokens", 0)
+
+            # Update cumulative token counts
+            self.cum_prompt_tokens += prompt_eval_count
+            self.cum_completion_tokens += eval_count
+
             return content, prompt_eval_count, eval_count
         finally:
             conn.close()
+
+
+class OpenAILLM:
+    def __init__(
+        self,
+        model="gpt-4o-mini",
+        base_url: str = "https://api.openai.com/v1",
+    ):
+        self.model = model
+        self.cum_prompt_tokens = 0
+        self.cum_completion_tokens = 0
+
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+        if OPENAI_API_KEY == "":
+            raise ValueError("OPENAI_API_KEY is not set")
+
+        self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=base_url)
+
+        print("Connected to OpenAI")
+
+    def change_model(self, model: str):
+        self.model = model
+
+    def generate(self, prompt: str, sys_prompt: str | None = None):
+        request_msg = []
+        if sys_prompt and sys_prompt != "":
+            request_msg.append({"role": "system", "content": sys_prompt})
+        request_msg.append({"role": "user", "content": prompt})
+
+        c = self.client.chat.completions.create(
+            model=self.model,
+            messages=request_msg,
+        )
+
+        if c.usage and c.usage.completion_tokens:
+            self.completion_tokens += c.usage.completion_tokens
+
+        if c.usage and c.usage.prompt_tokens:
+            self.prompt_tokens += c.usage.prompt_tokens
+
+        return (
+            str(c.choices[0].message.content),
+            c.usage.prompt_tokens if c.usage and c.usage.prompt_tokens else 0,
+            c.usage.completion_tokens if c.usage and c.usage.completion_tokens else 0,
+        )
 
 
 class OllamaLLM:
