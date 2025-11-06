@@ -1,3 +1,23 @@
+def create_init_cluster_with_sample_prompt(instruction, sample_texts) -> str:
+    init_prompt = f"""CLUSTER INITIALIZATION TASK:
+
+Objective: {instruction}
+
+Sample documents:
+{chr(10).join(sample_texts)}
+
+Based on these sample documents and the clustering objective, suggest 3-5 initial cluster labels that would be useful for categorizing similar documents.
+
+Rules:
+1. Labels should be 1-3 words each
+2. Labels should directly relate to the objective: {instruction}
+3. Labels should capture distinct categories visible in the samples
+4. Avoid overly specific or overly broad categories
+
+Return only the cluster labels, one per line, no explanations:"""
+    return init_prompt
+
+
 def create_cluster_prompt_sys() -> str:
     return (
         "You are an expert document classifier specializing in semantic clustering. "
