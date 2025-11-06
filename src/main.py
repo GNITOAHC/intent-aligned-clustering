@@ -276,6 +276,7 @@ def main(args):
     print("summary_file:", summary_file)
 
     # Run clustering rounds
+    round = 0
     for r in trange(args.max_rounds, desc="Clustering rounds"):
         print(f"\n=== Round {r + 1} ===")
 
@@ -300,7 +301,10 @@ def main(args):
         # Check if we've reached the target number of clusters
         if len(clusters) == cluster_counts:
             print(f"Reached target cluster count ({cluster_counts}) in round {r + 1}")
+            round = r
             break
+
+        round = r
 
     # Final cluster quality check and cleanup
     print("\n=== Final Processing ===")
@@ -357,7 +361,7 @@ def main(args):
             "total_documents": len(dataset),
             "target_clusters": cluster_counts,
             "actual_clusters": len(clusters),
-            "rounds_completed": min(r + 1, args.max_rounds),
+            "rounds_completed": min(round + 1, args.max_rounds),
             "clusters": {name: len(docs) for name, docs in clusters.items()},
             "cum_prompt_tokens": llm.cum_prompt_tokens,
             "cum_completion_tokens": llm.cum_completion_tokens,
