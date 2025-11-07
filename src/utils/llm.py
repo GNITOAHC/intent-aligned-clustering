@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from ollama import Client
 from openai import OpenAI
 import http.client
@@ -5,14 +6,17 @@ import os
 
 
 class LLM:
+    @abstractmethod
     def __init__(self, model="gpt-oss-20b"):
         self.cum_prompt_tokens = 0
         self.cum_completion_tokens = 0
         pass
 
+    @abstractmethod
     def generate(self, prompt: str, sys_prompt: str | None = None):
         return "", 0, 0
 
+    @abstractmethod
     def change_model(self, model: str):
         pass
 
