@@ -11,10 +11,9 @@ from src.core.prompts import (
     create_cluster_refinement_prompt,
 )
 from src.dataset import IACDataset
-from src.utils.llm import LLM, OuterMedusaLLM, OpenAILLM
+from src.utils.llm import LLM, get_llm_instance
 from src.utils.shared import target_cluster_count, get_output_files
 
-DEFAULT_PROVIDER = "outer_medusa"
 DEFAULT_MODEL = "gpt-oss-20b"
 llm = LLM()
 
@@ -383,7 +382,6 @@ if __name__ == "__main__":
     parser.add_argument("--docs", "-d", type=str, required=True, help="Path to the documents, either a directory or a CSV file")
     parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for experiments")
     # parser.add_argument("--ground_truth", "-g", type=str, default=None, help="Ground truth file for evaluation")
-    parser.add_argument("--provider", type=str, default=DEFAULT_PROVIDER, choices=["outer_medusa", "openai"], help="LLM provider to use (default: medusa_outer)")
     parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, help="LLM model to use")
     parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
     # fmt: on
@@ -395,12 +393,6 @@ if __name__ == "__main__":
     if args.prompt is None:
         args.prompt = input("Enter your prompt: ")
 
-    if args.provider == "openai":
-        llm = OpenAILLM()
-    elif args.provider == "outer_medusa":
-        llm = OuterMedusaLLM()
-
-    if args.model != DEFAULT_MODEL:
-        llm.change_model(args.model)
+    llm = get_llm_instance(args.model)
 
     main(args)

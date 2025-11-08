@@ -21,6 +21,18 @@ class LLM:
         pass
 
 
+def get_llm_instance(model: str):
+    match model:
+        case "gpt-oss-20b" | "gpt-oss-120b" | "Google-Gemma-3-27B" | "Llama-3.1-70B":
+            return OuterMedusaLLM(model=model)
+
+        case "gpt-4o-mini" | "gpt-4o" | "gpt-3.5-turbo":
+            return OpenAILLM(model=model)
+
+        case _:
+            raise ValueError(f"Unknown model or not supported: {model}")
+
+
 class OuterMedusaLLM:
     def __init__(self, model="gpt-oss-20b"):
         self.model = model

@@ -1,7 +1,11 @@
 def target_cluster_count(llm, prompt) -> int:
     PROMPT: str = f"According to the given prompt, please tell me how many cluster should I generate: {prompt}.\n\nJust give me the **pure number** without any explanation."
     response, _, _ = llm.generate(PROMPT)
-    return int(response.strip())
+    try:
+        return int(response.strip())
+    except ValueError:
+        print(f"Warning: Unable to parse cluster count from LLM response: {response}")
+        return 0
 
 
 def get_output_files(output_dir: str) -> tuple[str, str, str]:
