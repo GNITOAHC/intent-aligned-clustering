@@ -357,6 +357,7 @@ def main(args):
         # Save summary
         summary = {
             "prompt": prompt,
+            "model": args.model,
             "total_documents": len(dataset),
             "target_clusters": cluster_counts,
             "actual_clusters": len(clusters),
