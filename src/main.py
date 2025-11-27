@@ -82,7 +82,6 @@ def initialize_clusters_with_samples(
             label = line.strip().strip('"-').strip()
             if label and len(label) > 0:
                 initial_clusters[label] = []
-
         print(
             f"    Generated {len(initial_clusters)} initial clusters: {list(initial_clusters.keys())}"
         )
@@ -260,7 +259,7 @@ def main(args):
     prompt = args.prompt
     dataset = args.docs.endswith(".csv") and IACDataset.from_csv(args.docs) or IACDataset.from_dir(args.docs)
     clusters: dict[str, list] = {}
-    cluster_counts = target_cluster_count(llm, prompt)
+    cluster_counts = target_cluster_count(llm, prompt) # 沒看過 document 就決定分幾群？
     log_file, out_file, summary_file = get_output_files(args.output)
     # fmt: on
 
@@ -282,7 +281,7 @@ def main(args):
         # For the first round, sample a few documents to get initial cluster ideas
         if r == 0 and len(clusters) == 0:
             print("  Initializing clusters with sample documents...")
-            clusters = initialize_clusters_with_samples(
+            clusters = initialize_clusters_with_samples( # distributedly sample documents to get initial clusters?
                 dataset, prompt, min(10, len(dataset) // 10)
             )
 
@@ -315,6 +314,7 @@ def main(args):
     }
 
     if len(large_clusters) < len(clusters):
+        # ？
         # Merge small clusters into the largest cluster
         small_clusters = {
             name: docs
