@@ -10,6 +10,5 @@ echo "Output Directory: $OUTPUT_DIR"
 echo "Prompt: $PROMPT_STR"
 
 
-uv run python -m src.baseline -o $OUTPUT_DIR -d $DOC_CSV -p "$PROMPT_STR"
-
-# bash scripts/baseline.sh sample.csv prompt.txt baseline_out
+uv run python -m src2.main -o $OUTPUT_DIR -d $DOC_CSV -p "$PROMPT_STR"
+# uv version is not tested yet
