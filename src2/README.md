@@ -10,6 +10,9 @@ The baseline (located in `src2/`) follows this pipeline:
 3.  **LLM Inference**: Generates a label for each document (Zero-shot).
 4.  **Aggregation**: Groups documents by exact label match.
 
+the picture of baseline 
+![baseline](./baseline.png)
+
 ## Installation
 
 Ensure you have Python 3.13+ installed.
