@@ -21,6 +21,17 @@ class LLM:
         pass
 
 
+def llm_choices():
+    return [
+        "gpt-oss-20b",
+        "gpt-oss-120b",
+        "Google-Gemma-3-27B",
+        "Llama-3.1-70B",
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-3.5-turbo"
+    ]
+
 def get_llm_instance(model: str):
     match model:
         case "gpt-oss-20b" | "gpt-oss-120b" | "Google-Gemma-3-27B" | "Llama-3.1-70B":

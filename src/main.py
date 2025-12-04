@@ -11,7 +11,7 @@ from src.core.prompts import (
     create_cluster_refinement_prompt,
 )
 from src.dataset import IACDataset
-from src.utils.llm import LLM, get_llm_instance
+from src.utils.llm import LLM, get_llm_instance, llm_choices
 from src.utils.shared import target_cluster_count, get_output_files
 
 DEFAULT_MODEL = "gpt-oss-20b"
@@ -411,7 +411,7 @@ if __name__ == "__main__":
     parser.add_argument("--docs", "-d", type=str, required=True, help="Path to the documents, either a directory or a CSV file")
     parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for experiments")
     # parser.add_argument("--ground_truth", "-g", type=str, default=None, help="Ground truth file for evaluation")
-    parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, help="LLM model to use")
+    parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, choices=llm_choices(), help="LLM model to use")
     parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
     # fmt: on
     args = parser.parse_args()
