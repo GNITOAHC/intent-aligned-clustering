@@ -138,6 +138,51 @@ def refine_cluster_labels(
         return clusters
 
 
+def merge_small_clusters(
+    clusters: dict[str, list], k: int, pass_num: int = 0
+) -> dict[str, list]:
+    """
+    Merge small clusters (size 1) into the largest cluster to reduce cluster count.
+
+    Parameters:
+        clusters: dictionary of clusters
+        k: target number of clusters
+        pass_num: merge pass number for logging
+    Returns:
+        dictionary of clusters after merging
+    """
+    if len(clusters) <= k * 1.5:
+        return clusters
+
+    # Sort clusters by size (smallest first)
+    sorted_clusters = sorted(clusters.items(), key=lambda x: len(x[1]))
+
+    # Identify clusters to merge (size 1 clusters)
+    clusters_to_merge = []
+    for small_cluster, docs in sorted_clusters:
+        if len(docs) == 1 and len(clusters_to_merge) < len(clusters) - k:
+            clusters_to_merge.append((small_cluster, docs))
+
+    # Merge small clusters into the largest cluster
+    if clusters_to_merge and len(clusters) > k:
+        largest_cluster = max(clusters.items(), key=lambda x: len(x[1]))[0]
+        for small_cluster, docs in clusters_to_merge:
+            if small_cluster != largest_cluster:
+                clusters[largest_cluster].extend(docs)
+                del clusters[small_cluster]
+
+        if pass_num > 0:
+            print(
+                f"  Merge pass {pass_num}: Merged {len(clusters_to_merge)} small clusters into '{largest_cluster}'"
+            )
+        else:
+            print(
+                f"  Merged {len(clusters_to_merge)} small clusters into '{largest_cluster}'"
+            )
+
+    return clusters
+
+
 def cluster_to_k(
     dataset: IACDataset, clusters: dict[str, list], instruction: str, k: int
 ) -> dict[str, list]:
@@ -226,28 +271,11 @@ def cluster_to_k(
     print(f"  Label normalizations: {label_changes}, Errors: {errors}")
 
     # Post-processing: merge very small clusters if we have too many
-    if (
-        len(new_clusters) > k * 1.5
-    ):  # If we have significantly more clusters than target
-        # Sort clusters by size (smallest first)
-        sorted_clusters = sorted(new_clusters.items(), key=lambda x: len(x[1]))
-
-        # Merge smallest clusters into larger ones based on semantic similarity
-        clusters_to_merge = []
-        for small_cluster, docs in sorted_clusters:
-            if len(docs) == 1 and len(clusters_to_merge) < len(new_clusters) - k:
-                clusters_to_merge.append((small_cluster, docs))
-
-        # Simple merging strategy: add small clusters to the largest cluster
-        if clusters_to_merge and len(new_clusters) > k:
-            largest_cluster = max(new_clusters.items(), key=lambda x: len(x[1]))[0]
-            for small_cluster, docs in clusters_to_merge:
-                if small_cluster != largest_cluster:
-                    new_clusters[largest_cluster].extend(docs)
-                    del new_clusters[small_cluster]
-            print(
-                f"  Merged {len(clusters_to_merge)} small clusters into '{largest_cluster}'"
-            )
+    # Perform merging twice to handle cases with excessive clusters
+    for merge_pass in range(1, 3):
+        new_clusters = merge_small_clusters(new_clusters, k, merge_pass)
+        if len(new_clusters) <= k * 1.5:
+            break
 
     # Ensure we don't have empty clusters and maintain consistency
     filtered_clusters = {label: docs for label, docs in new_clusters.items() if docs}
