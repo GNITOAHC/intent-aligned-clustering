@@ -1,0 +1,1 @@
+Analyze the reviews to identify actionable product insights, grouping them into content quality, hardware durability issues, user interface/manual clarity problems, and shipping/seller satisfaction.
