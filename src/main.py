@@ -18,6 +18,35 @@ DEFAULT_MODEL = "gpt-oss-20b"
 llm = LLM()
 
 
+def log_cluster_step(clusters: dict[str, list], step_name: str):
+    """Logs the state of clusters at a given step."""
+    print(f"\n--- Step: {step_name} ---")
+    if not clusters:
+        print("  No clusters to log.")
+        print("--- End Step ---")
+        return
+    print(f"Total clusters: {len(clusters)}")
+    sorted_clusters = sorted(
+        clusters.items(), key=lambda item: len(item[1]), reverse=True
+    )
+    for name, docs in sorted_clusters:
+        print(f"  - {name}: {len(docs)}")
+    print("--- End Step ---")
+
+
+def get_doc_assignments(clusters: dict[str, list], total_docs: int) -> list[str]:
+    """
+    Returns a list where index is doc_id and value is the cluster label.
+    Unassigned documents are labeled 'Unassigned'.
+    """
+    assignments = ["Unassigned"] * total_docs
+    for label, doc_ids in clusters.items():
+        for doc_id in doc_ids:
+            if 0 <= doc_id < total_docs:
+                assignments[doc_id] = label
+    return assignments
+
+
 def normalize_label(label: str) -> str:
     """Normalize cluster labels to improve consistency"""
     return (
@@ -86,6 +115,7 @@ def initialize_clusters_with_samples(
         print(
             f"    Generated {len(initial_clusters)} initial clusters: {list(initial_clusters.keys())}"
         )
+        log_cluster_step(initial_clusters, "init")
         return initial_clusters
 
     except Exception as e:
@@ -131,6 +161,7 @@ def refine_cluster_labels(
         print(
             f"    Refined {len([k for k in refined_clusters.keys() if k not in clusters])} cluster labels"
         )
+        log_cluster_step(refined_clusters, "refine")
         return refined_clusters
 
     except Exception as e:
@@ -267,13 +298,18 @@ def cluster_to_k(
                 new_clusters[fallback_label] = []
             new_clusters[fallback_label].append(doc_id)
 
+    log_cluster_step(new_clusters, "generated")
+
     # Print statistics
     print(f"  Label normalizations: {label_changes}, Errors: {errors}")
 
     # Post-processing: merge very small clusters if we have too many
     # Perform merging twice to handle cases with excessive clusters
     for merge_pass in range(1, 3):
+        clusters_before_merge = len(new_clusters)
         new_clusters = merge_small_clusters(new_clusters, k, merge_pass)
+        if len(new_clusters) < clusters_before_merge:
+            log_cluster_step(new_clusters, f"merge_pass_{merge_pass}")
         if len(new_clusters) <= k * 1.5:
             break
 
@@ -289,7 +325,7 @@ def main(args):
     dataset = args.docs.endswith(".csv") and IACDataset.from_csv(args.docs) or IACDataset.from_dir(args.docs)
     clusters: dict[str, list] = {}
     cluster_counts = target_cluster_count(llm, prompt)
-    log_file, out_file, summary_file = get_output_files(args.output)
+    log_file, out_file, summary_file, sankey_file = get_output_files(args.output)
     # fmt: on
 
     ##############
@@ -301,9 +337,12 @@ def main(args):
     print("log_file:", log_file)
     print("out_file:", out_file)
     print("summary_file:", summary_file)
+    print("sankey_file:", sankey_file)
 
     # Run clustering rounds
     round = 0
+    history = []
+
     for r in trange(args.max_rounds, desc="Clustering rounds"):
         print(f"\n=== Round {r + 1} ===")
 
@@ -316,6 +355,15 @@ def main(args):
 
         clusters = cluster_to_k(dataset, clusters, prompt, cluster_counts)
 
+        # Track history
+        history.append(
+            {
+                "round": r + 1,
+                "step": "clustering",
+                "assignments": get_doc_assignments(clusters, len(dataset)),
+            }
+        )
+
         print(f"Clusters after round {r + 1}: {len(clusters)} clusters")
         for cluster_name, doc_ids in clusters.items():
             print(f"  {cluster_name}: {len(doc_ids)} documents")
@@ -324,6 +372,15 @@ def main(args):
         if r > 0 and (r + 1) % 2 == 0 and len(clusters) > 1:
             print("  Refining cluster labels...")
             clusters = refine_cluster_labels(clusters, prompt)
+
+            # Track history
+            history.append(
+                {
+                    "round": r + 1,
+                    "step": "refinement",
+                    "assignments": get_doc_assignments(clusters, len(dataset)),
+                }
+            )
 
         # Check if we've reached the target number of clusters
         if len(clusters) == cluster_counts:
@@ -357,6 +414,16 @@ def main(args):
                 f"Merged {len(small_clusters)} small clusters into '{largest_cluster}'"
             )
             clusters = large_clusters
+            log_cluster_step(clusters, "final_cleanup_merge")
+
+            # Track history
+            history.append(
+                {
+                    "round": "final",
+                    "step": "cleanup",
+                    "assignments": get_doc_assignments(clusters, len(dataset)),
+                }
+            )
 
     # Save results
     print("\nFinal clustering results:")
@@ -399,6 +466,12 @@ def main(args):
             json.dump(summary, f, indent=2)
 
         print(f"Summary saved to: {summary_file}")
+
+        # Save sankey data
+        with open(sankey_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2)
+
+        print(f"Sankey data saved to: {sankey_file}")
 
     except Exception as e:
         print(f"Error saving results: {e}")
