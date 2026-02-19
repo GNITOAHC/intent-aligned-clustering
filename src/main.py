@@ -81,10 +81,12 @@ def find_best_matching_cluster(label: str, existing_clusters: list[str]) -> str:
 
 
 def initialize_clusters_with_samples(
-    dataset: IACDataset, instruction: str, sample_size: int
+    dataset: IACDataset, instruction: str, sample_size: int, seed: int = 42
 ) -> dict[str, list]:
     """Initialize clusters by analyzing a sample of documents to get initial cluster ideas"""
     import random
+
+    random.seed(seed)
 
     try:
         # Sample random documents from the dataset
@@ -350,7 +352,7 @@ def main(args):
         if r == 0 and len(clusters) == 0:
             print("  Initializing clusters with sample documents...")
             clusters = initialize_clusters_with_samples(
-                dataset, prompt, min(10, len(dataset) // 10)
+                dataset, prompt, min(10, len(dataset) // 10), seed=args.seed
             )
 
         clusters = cluster_to_k(dataset, clusters, prompt, cluster_counts)
@@ -486,6 +488,7 @@ if __name__ == "__main__":
     # parser.add_argument("--ground_truth", "-g", type=str, default=None, help="Ground truth file for evaluation")
     parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, choices=llm_choices(), help="LLM model to use")
     parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
+    parser.add_argument("--seed", "-s", type=int, default=42, help="Random seed for reproducibility")
     # fmt: on
     args = parser.parse_args()
 
