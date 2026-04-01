@@ -29,7 +29,9 @@ def llm_choices():
         "Llama-3.1-70B",
         "gpt-4o-mini",
         "gpt-4o",
-        "gpt-3.5-turbo"
+        "gpt-3.5-turbo",
+        "gpt-5",
+        "gpt-4o"
     ]
 
 def get_llm_instance(model: str):
@@ -37,7 +39,7 @@ def get_llm_instance(model: str):
         case "gpt-oss-20b" | "gpt-oss-120b" | "Google-Gemma-3-27B" | "Llama-3.1-70B":
             return OuterMedusaLLM(model=model)
 
-        case "gpt-4o-mini" | "gpt-4o" | "gpt-3.5-turbo":
+        case "gpt-4o-mini" | "gpt-4o" | "gpt-3.5-turbo" | "gpt-5" | "gpt-4o":
             return OpenAILLM(model=model)
 
         case _:
@@ -178,7 +180,7 @@ class OpenAILLM:
 
         from dotenv import load_dotenv
 
-        load_dotenv()
+        load_dotenv(override=True)
         OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
         if OPENAI_API_KEY == "":
             raise ValueError("OPENAI_API_KEY is not set")

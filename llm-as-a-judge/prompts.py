@@ -41,7 +41,7 @@ Your task is to evaluate how well the clustering reflects the user's stated goal
 Consider:
 - Does the clustering structure match what the intent asked for?
 - Are the cluster categories relevant to the stated purpose?
-- Does the number of clusters align with any specified requirements?
+- Does the number of clusters align with any specified requirements?(±3 cluster is acceptable)
 - Would this clustering help achieve the user's analytical goals?
 
 {JSON_OUTPUT_INSTRUCTION}"""
