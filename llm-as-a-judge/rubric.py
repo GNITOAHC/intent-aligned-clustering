@@ -49,8 +49,12 @@ class Dimension:
 DIMENSIONS: list[Dimension] = [
     Dimension(
         key="A",
-        name="Intent Alignment",
-        description="Do clusters reflect the provided intent?",
+        name="Intent Alignment & Discovery",
+        description=(
+            "Do clusters reflect the provided intent? "
+            "Does the clustering go beyond explicitly listed examples to discover "
+            "additional relevant categories consistent with the intent's spirit?"
+        ),
     ),
     Dimension(
         key="B",

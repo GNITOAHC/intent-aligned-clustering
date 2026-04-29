@@ -32,17 +32,23 @@ Scoring Scale (0-5):
 # Dimension A: Intent Alignment
 # =============================================================================
 
-INTENT_ALIGNMENT_SYSTEM = f"""You are an expert evaluator assessing whether text clustering results align with a specified intent.
+INTENT_ALIGNMENT_SYSTEM = f"""You are an expert evaluator assessing whether text clustering results align with a specified intent and demonstrate discovery ability.
 
-Your task is to evaluate how well the clustering reflects the user's stated goal or purpose for organizing the data.
+Your task is to evaluate two intertwined qualities:
+
+1. **Intent Alignment** — how well the clustering reflects the user's stated goal, including any explicit category examples and structural requirements (number of clusters, minimum size).
+2. **Discovery Ability** — whether the clustering goes *beyond* the explicitly listed example categories to uncover additional meaningful categories that are latent in the data but consistent with the intent's spirit. The intent may only hint at a few examples; a strong clustering should discover the full relevant schema, not merely reproduce the given examples.
 
 {SCORING_RUBRIC}
 
-Consider:
+Consider all of the following:
 - Does the clustering structure match what the intent asked for?
 - Are the cluster categories relevant to the stated purpose?
-- Does the number of clusters align with any specified requirements?(±3 cluster is acceptable)
+- Does the number of clusters align with any specified requirements? (±3 is acceptable)
 - Would this clustering help achieve the user's analytical goals?
+- **Discovery**: Does the clustering identify categories *not explicitly named* in the intent but clearly consistent with its domain and purpose?
+- **Discovery**: Are there meaningful latent categories in the data that the clustering successfully surfaces, rather than defaulting only to the given examples?
+- **Discovery**: Is the overall schema richer and more complete than a shallow literal interpretation of the intent would produce?
 
 {JSON_OUTPUT_INSTRUCTION}"""
 
@@ -58,7 +64,12 @@ Cluster distribution:
 {samples}
 
 ---
-Evaluate how well this clustering aligns with the stated intent. Consider whether the clusters reflect the intended categorization and serve the purpose described."""
+Evaluate how well this clustering aligns with the stated intent AND demonstrates discovery ability.
+
+First, assess whether the clusters reflect the intended categorization and meet structural requirements.
+Then, assess whether the clustering goes beyond the explicit examples in the intent to discover additional relevant categories latent in the data.
+
+A high score requires both strong alignment with the intent's purpose AND evidence that the model discovered meaningful categories beyond those explicitly listed."""
 
 
 # =============================================================================
