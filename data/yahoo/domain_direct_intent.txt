@@ -1,0 +1,1 @@
+Cluster the question-answer pairs by their primary topic or subject domain. Please cluster them into 10 groups, with each group containing at least 3 items.

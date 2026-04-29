@@ -1,0 +1,1 @@
+Cluster the texts based on the type of non-literal or ironic language used. Please cluster them into 6 groups, with each group containing at least 3 items.

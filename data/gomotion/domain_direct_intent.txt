@@ -1,0 +1,1 @@
+Cluster the texts based on the emotional tone or feeling expressed. Please cluster them into 14 groups, with each group containing at least 3 items.

@@ -1,0 +1,1 @@
+Cluster the reviews based on the overall sentiment expressed toward the product. Each group should contain at least 3 reviews.
