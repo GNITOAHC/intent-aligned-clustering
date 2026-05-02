@@ -30,13 +30,13 @@ uv run python -m llm-as-a-judge \
 
 The judge evaluates clustering quality across five structured dimensions:
 
-| Dimension                           | Description                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| A. Intent Alignment                 | Do clusters reflect the provided intent?                                   |
-| B. Intra-cluster Coherence          | Are items within a cluster semantically consistent?                        |
-| C. Inter-cluster Distinctness       | Are clusters meaningfully different from each other?                       |
-| D. Label Quality                    | Are cluster labels accurate, concise, and informative?                     |
-| E. Coverage & Analytical Usefulness | Do clusters provide useful structure for downstream reasoning or analysis? |
+| Dimension                           | Description                                                                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A. Intent Alignment & Discovery     | Do clusters reflect the provided intent? Does the clustering go beyond explicitly listed examples to discover additional relevant categories consistent with the intent's spirit? |
+| B. Intra-cluster Coherence          | Are items within a cluster semantically consistent?                                                                                                                      |
+| C. Inter-cluster Distinctness       | Are clusters meaningfully different from each other?                                                                                                                     |
+| D. Label Quality                    | Are cluster labels accurate, concise, and informative?                                                                                                                   |
+| E. Coverage & Analytical Usefulness | Do clusters provide useful structure for downstream reasoning or analysis?                                                                                               |
 
 ### Scoring Scale
 
@@ -152,10 +152,10 @@ python -m llm-as-a-judge \
   "dimensions": {
     "A": {
       "dimension": "A",
-      "name": "Intent Alignment",
+      "name": "Intent Alignment & Discovery",
       "score": 4,
       "score_description": "Good quality",
-      "reasoning": "The clustering largely reflects the intent..."
+      "reasoning": "The clustering largely reflects the intent and surfaces additional latent categories beyond the listed examples..."
     },
     "B": { ... },
     "C": { ... },
