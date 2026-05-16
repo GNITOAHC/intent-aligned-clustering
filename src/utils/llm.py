@@ -134,6 +134,7 @@ class OuterMedusaLLM:
 
     def generate(self, prompt: str, sys_prompt: str | None = None):
         import json
+        import time
 
         path = "/v1/chat/completions"
         payload = {"model": self.model, "messages": []}
@@ -141,31 +142,40 @@ class OuterMedusaLLM:
             payload["messages"].append({"role": "system", "content": sys_prompt})
         payload["messages"].append({"role": "user", "content": prompt})
 
-        conn = self._get_connection()
-        try:
-            response, response_data = self._get_response(
-                conn,
-                "POST",
-                path,
-                body=json.dumps(payload),
-            )
-            if response.status != 200:
-                raise ValueError(
-                    f"Request failed: {response.status} {response.reason} - {response_data}"
+        max_retries = 10
+        retry_delay = 10  # seconds, doubles on each 429
+
+        for attempt in range(max_retries):
+            conn = self._get_connection()
+            try:
+                response, response_data = self._get_response(
+                    conn,
+                    "POST",
+                    path,
+                    body=json.dumps(payload),
                 )
-            data = json.loads(response_data)
-            # Response shape: { "choices": [{ "message": { "content": ... } }], "usage": {"prompt_tokens": ..., "completion_tokens": ... } }
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            prompt_eval_count = data.get("usage", {}).get("prompt_tokens", 0)
-            eval_count = data.get("usage", {}).get("completion_tokens", 0)
+                if response.status == 429:
+                    wait = retry_delay * (2 ** attempt)
+                    print(f"  [429] Rate limited. Waiting {wait}s before retry {attempt + 1}/{max_retries}...")
+                    time.sleep(wait)
+                    continue
+                if response.status != 200:
+                    raise ValueError(
+                        f"Request failed: {response.status} {response.reason} - {response_data}"
+                    )
+                data = json.loads(response_data)
+                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                prompt_eval_count = data.get("usage", {}).get("prompt_tokens", 0)
+                eval_count = data.get("usage", {}).get("completion_tokens", 0)
 
-            # Update cumulative token counts
-            self.cum_prompt_tokens += prompt_eval_count
-            self.cum_completion_tokens += eval_count
+                self.cum_prompt_tokens += prompt_eval_count
+                self.cum_completion_tokens += eval_count
 
-            return content, prompt_eval_count, eval_count
-        finally:
-            conn.close()
+                return content, prompt_eval_count, eval_count
+            finally:
+                conn.close()
+
+        raise ValueError(f"Request failed after {max_retries} retries due to rate limiting (429).")
 
 
 class OpenAILLM:
