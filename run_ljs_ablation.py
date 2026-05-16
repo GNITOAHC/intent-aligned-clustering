@@ -116,7 +116,7 @@ def main():
     parser = argparse.ArgumentParser(description="LJS evaluation for ablation runs")
     parser.add_argument(
         "--model", "-m",
-        default=os.environ.get("JUDGE_MODEL", "gpt-oss-120b"),
+        default=os.environ.get("JUDGE_MODEL", "gpt-5"),
         help="Judge model (default: env JUDGE_MODEL or gpt-oss-120b)",
     )
     parser.add_argument("--verbose", "-v", action="store_true")

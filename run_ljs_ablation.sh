@@ -11,7 +11,7 @@ set -euo pipefail
 
 [[ -f .env ]] && set -a && source .env && set +a
 
-export JUDGE_MODEL="${JUDGE_MODEL:-gpt-oss-120b}"
+export JUDGE_MODEL="${JUDGE_MODEL:-gpt-5}"
 
 echo "=== LJS Ablation Evaluation ==="
 echo "Judge model : ${JUDGE_MODEL}"
