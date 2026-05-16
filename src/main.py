@@ -217,7 +217,8 @@ def merge_small_clusters(
 
 
 def cluster_to_k(
-    dataset: IACDataset, clusters: dict[str, list], instruction: str, k: int
+    dataset: IACDataset, clusters: dict[str, list], instruction: str, k: int,
+    no_postproc: bool = False,
 ) -> dict[str, list]:
     """
     Cluster documents into k clusters. The original clusters are provided as prior knowledge.
@@ -306,14 +307,14 @@ def cluster_to_k(
     print(f"  Label normalizations: {label_changes}, Errors: {errors}")
 
     # Post-processing: merge very small clusters if we have too many
-    # Perform merging twice to handle cases with excessive clusters
-    for merge_pass in range(1, 3):
-        clusters_before_merge = len(new_clusters)
-        new_clusters = merge_small_clusters(new_clusters, k, merge_pass)
-        if len(new_clusters) < clusters_before_merge:
-            log_cluster_step(new_clusters, f"merge_pass_{merge_pass}")
-        if len(new_clusters) <= k * 1.5:
-            break
+    if not no_postproc:
+        for merge_pass in range(1, 3):
+            clusters_before_merge = len(new_clusters)
+            new_clusters = merge_small_clusters(new_clusters, k, merge_pass)
+            if len(new_clusters) < clusters_before_merge:
+                log_cluster_step(new_clusters, f"merge_pass_{merge_pass}")
+            if len(new_clusters) <= k * 1.5:
+                break
 
     # Ensure we don't have empty clusters and maintain consistency
     filtered_clusters = {label: docs for label, docs in new_clusters.items() if docs}
@@ -355,7 +356,7 @@ def main(args):
                 dataset, prompt, min(10, len(dataset) // 10), seed=args.seed
             )
 
-        clusters = cluster_to_k(dataset, clusters, prompt, cluster_counts)
+        clusters = cluster_to_k(dataset, clusters, prompt, cluster_counts, no_postproc=args.no_postproc)
 
         # Track history
         history.append(
@@ -395,37 +396,40 @@ def main(args):
     # Final cluster quality check and cleanup
     print("\n=== Final Processing ===")
 
-    # Remove any clusters that are too small (less than 1% of total documents)
-    min_cluster_size = max(1, len(dataset) // 100)
-    large_clusters = {
-        name: docs for name, docs in clusters.items() if len(docs) >= min_cluster_size
-    }
-
-    if len(large_clusters) < len(clusters):
-        # Merge small clusters into the largest cluster
-        small_clusters = {
-            name: docs
-            for name, docs in clusters.items()
-            if len(docs) < min_cluster_size
+    if args.no_postproc:
+        print("  Post-processing disabled (--no_postproc); skipping final cleanup.")
+    else:
+        # Remove any clusters that are too small (less than 1% of total documents)
+        min_cluster_size = max(1, len(dataset) // 100)
+        large_clusters = {
+            name: docs for name, docs in clusters.items() if len(docs) >= min_cluster_size
         }
-        if large_clusters:
-            largest_cluster = max(large_clusters.items(), key=lambda x: len(x[1]))[0]
-            for small_name, small_docs in small_clusters.items():
-                large_clusters[largest_cluster].extend(small_docs)
-            print(
-                f"Merged {len(small_clusters)} small clusters into '{largest_cluster}'"
-            )
-            clusters = large_clusters
-            log_cluster_step(clusters, "final_cleanup_merge")
 
-            # Track history
-            history.append(
-                {
-                    "round": "final",
-                    "step": "cleanup",
-                    "assignments": get_doc_assignments(clusters, len(dataset)),
-                }
-            )
+        if len(large_clusters) < len(clusters):
+            # Merge small clusters into the largest cluster
+            small_clusters = {
+                name: docs
+                for name, docs in clusters.items()
+                if len(docs) < min_cluster_size
+            }
+            if large_clusters:
+                largest_cluster = max(large_clusters.items(), key=lambda x: len(x[1]))[0]
+                for small_name, small_docs in small_clusters.items():
+                    large_clusters[largest_cluster].extend(small_docs)
+                print(
+                    f"Merged {len(small_clusters)} small clusters into '{largest_cluster}'"
+                )
+                clusters = large_clusters
+                log_cluster_step(clusters, "final_cleanup_merge")
+
+                # Track history
+                history.append(
+                    {
+                        "round": "final",
+                        "step": "cleanup",
+                        "assignments": get_doc_assignments(clusters, len(dataset)),
+                    }
+                )
 
     # Save results
     print("\nFinal clustering results:")
@@ -489,6 +493,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, choices=llm_choices(), help="LLM model to use")
     parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
     parser.add_argument("--seed", "-s", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--no_postproc", action="store_true", help="Disable post-processing (merge_small_clusters + final cleanup)")
     # fmt: on
     args = parser.parse_args()
 
