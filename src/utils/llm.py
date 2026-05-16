@@ -31,7 +31,8 @@ def llm_choices():
         "gpt-4o",
         "gpt-3.5-turbo",
         "gpt-5",
-        "gpt-4o"
+        "openrouter/gpt-oss-120b",
+        "openrouter/gpt-oss-120b:free",
     ]
 
 def get_llm_instance(model: str):
@@ -39,8 +40,12 @@ def get_llm_instance(model: str):
         case "gpt-oss-20b" | "gpt-oss-120b" | "Google-Gemma-3-27B" | "Llama-3.1-70B":
             return OuterMedusaLLM(model=model)
 
-        case "gpt-4o-mini" | "gpt-4o" | "gpt-3.5-turbo" | "gpt-5" | "gpt-4o":
+        case "gpt-4o-mini" | "gpt-4o" | "gpt-3.5-turbo" | "gpt-5":
             return OpenAILLM(model=model)
+
+        case "openrouter/gpt-oss-120b" | "openrouter/gpt-oss-120b:free":
+            # strip "openrouter/" prefix → actual model ID on OpenRouter
+            return OpenRouterLLM(model=model.removeprefix("openrouter/"))
 
         case _:
             raise ValueError(f"Unknown model or not supported: {model}")
@@ -227,6 +232,54 @@ class OpenAILLM:
             c.usage.prompt_tokens if c.usage and c.usage.prompt_tokens else 0,
             c.usage.completion_tokens if c.usage and c.usage.completion_tokens else 0,
         )
+
+
+class OpenRouterLLM:
+    """OpenAI-compatible client for OpenRouter (https://openrouter.ai/api/v1).
+    Requires OPENROUTER_API_KEY in .env.
+    Model examples: 'openai/gpt-oss-120b', 'openai/gpt-oss-120b:free'
+    """
+
+    def __init__(self, model: str = "openai/gpt-oss-120b"):
+        self.model = model
+        self.cum_prompt_tokens = 0
+        self.cum_completion_tokens = 0
+
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        api_key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY is not set")
+
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
+        print(f"Connected to OpenRouter (model={self.model})")
+
+    def __str__(self):
+        return f"OpenRouterLLM(model={self.model})"
+
+    def change_model(self, model: str):
+        self.model = model
+
+    def generate(self, prompt: str, sys_prompt: str | None = None):
+        messages = []
+        if sys_prompt:
+            messages.append({"role": "system", "content": sys_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        c = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+        )
+
+        prompt_tokens = c.usage.prompt_tokens if c.usage else 0
+        completion_tokens = c.usage.completion_tokens if c.usage else 0
+        self.cum_prompt_tokens += prompt_tokens
+        self.cum_completion_tokens += completion_tokens
+
+        return str(c.choices[0].message.content), prompt_tokens, completion_tokens
 
 
 class OllamaLLM:
