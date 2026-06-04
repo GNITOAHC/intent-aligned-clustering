@@ -2,9 +2,12 @@
 # Refinement Loop Ablation
 #   Condition 1: IAC w/o refinement  (--max_rounds 1, full post-processing)
 #   Condition 2: IAC w/o post-proc.  (--max_rounds 5, --no_postproc)
-# Run from: /Users/harry/Desktop/iac_emnlp_exp_results/intent-aligned-clustering
 # Requires: OUTER_MEDUSA_ENDPOINT and OUTER_MEDUSA_API_KEY in .env
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
 
 [[ -f .env ]] && set -a && source .env && set +a
 
