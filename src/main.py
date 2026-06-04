@@ -400,6 +400,7 @@ def main(args):
         print("  Post-processing disabled (--no_postproc); skipping final cleanup.")
     else:
         # Remove any clusters that are too small (less than 1% of total documents)
+        # limiation: if the corpus distribution is too sparse, there might be small amount of cluster left
         min_cluster_size = max(1, len(dataset) // 100)
         large_clusters = {
             name: docs for name, docs in clusters.items() if len(docs) >= min_cluster_size
@@ -413,7 +414,9 @@ def main(args):
                 if len(docs) < min_cluster_size
             }
             if large_clusters:
+                # get max instances from the largest cluster
                 largest_cluster = max(large_clusters.items(), key=lambda x: len(x[1]))[0]
+                # merge
                 for small_name, small_docs in small_clusters.items():
                     large_clusters[largest_cluster].extend(small_docs)
                 print(
