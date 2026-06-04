@@ -102,6 +102,14 @@ options:
 
 ## Examples
 
+### Ablation Batch Evaluation
+
+```bash
+bash scripts/run_ljs_ablation.sh
+```
+
+This evaluates every `out/ablation_*` directory produced by `scripts/run_ablation.sh`, writes `ljs.json` next to each experiment, and appends summary rows to `LJS_ablation.log`.
+
 ### Basic Evaluation
 
 ```bash
@@ -234,6 +242,7 @@ llm-as-a-judge/
 ├── judge.py          # CLI implementation
 ├── evaluator.py      # Core ClusterJudge class
 ├── prompts.py        # LLM prompt templates
+├── run_ljs_ablation.py # Batch evaluator for ablation outputs
 ├── rubric.py         # Scoring definitions
 ├── sampler.py        # Cluster sampling logic
 ├── report.py         # Result data structures
