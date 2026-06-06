@@ -1,3 +1,5 @@
+"""TF-IDF + K-means++ baseline for document clustering."""
+
 from src.dataset import IACDataset
 import argparse
 import os
@@ -13,9 +15,9 @@ llm = OuterMedusaLLM()
 
 
 def embed_documents(texts: list[str]) -> np.ndarray:
-    """
-    Embed documents using TF-IDF vectorization.
-    In a real implementation, this could use sentence transformers or other embedding models.
+    """Embed documents using TF-IDF vectorization.
+
+    In a real implementation this could use sentence transformers or other embedding models.
     """
     vectorizer = TfidfVectorizer(max_features=1000, stop_words="english")
     embeddings = vectorizer.fit_transform(texts)
@@ -25,9 +27,7 @@ def embed_documents(texts: list[str]) -> np.ndarray:
 def perform_kmeans_clustering(
     embeddings: np.ndarray, n_clusters: int
 ) -> tuple[np.ndarray, KMeans]:
-    """
-    Perform K-means++ clustering on the embeddings.
-    """
+    """Perform K-means++ clustering on the embeddings."""
     kmeans = KMeans(n_clusters=n_clusters, init="k-means++", random_state=42)
     cluster_labels = kmeans.fit_predict(embeddings)
     return cluster_labels, kmeans
@@ -41,9 +41,7 @@ def save_clustering_results(
     summary_file: str = None,
     log_file: str = None,
 ):
-    """
-    Save clustering results to output directory.
-    """
+    """Save clustering results to output directory."""
     # Create cluster assignments
     for i, label in enumerate(cluster_labels):
         cluster_name = f"cluster_{label}"

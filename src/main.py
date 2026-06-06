@@ -1,3 +1,5 @@
+"""LLM-based iterative document clustering pipeline."""
+
 import argparse
 import os
 import json
@@ -35,9 +37,16 @@ def log_cluster_step(clusters: dict[str, list], step_name: str):
 
 
 def get_doc_assignments(clusters: dict[str, list], total_docs: int) -> list[str]:
-    """
-    Returns a list where index is doc_id and value is the cluster label.
+    """Returns a list where index is doc_id and value is the cluster label.
+
     Unassigned documents are labeled 'Unassigned'.
+
+    Args:
+        clusters: Mapping of cluster labels to lists of doc IDs.
+        total_docs: Total number of documents.
+
+    Returns:
+        List of cluster labels indexed by doc_id.
     """
     assignments = ["Unassigned"] * total_docs
     for label, doc_ids in clusters.items():
@@ -174,15 +183,15 @@ def refine_cluster_labels(
 def merge_small_clusters(
     clusters: dict[str, list], k: int, pass_num: int = 0
 ) -> dict[str, list]:
-    """
-    Merge small clusters (size 1) into the largest cluster to reduce cluster count.
+    """Merge small clusters (size 1) into the largest cluster to reduce cluster count.
 
-    Parameters:
-        clusters: dictionary of clusters
-        k: target number of clusters
-        pass_num: merge pass number for logging
+    Args:
+        clusters: Dictionary of cluster labels to doc ID lists.
+        k: Target number of clusters.
+        pass_num: Merge pass number for logging.
+
     Returns:
-        dictionary of clusters after merging
+        Dictionary of clusters after merging.
     """
     if len(clusters) <= k * 1.5:
         return clusters
@@ -220,17 +229,18 @@ def cluster_to_k(
     dataset: IACDataset, clusters: dict[str, list], instruction: str, k: int,
     no_postproc: bool = False,
 ) -> dict[str, list]:
-    """
-    Cluster documents into k clusters. The original clusters are provided as prior knowledge.
-    To get the text of each document, use for id, (_, text) in enumerate(dataset): ...
-    ---
-    Parameters:
-        dataset: IACDataset
-        clusters: existing clusters
-        instruction: prompt
-        k: target number of clusters
+    """Cluster documents into k clusters using the provided clusters as prior knowledge.
+
+    Args:
+        dataset: IACDataset containing the documents.
+        clusters: Existing clusters used as prior knowledge.
+        instruction: Prompt/instruction guiding cluster semantics.
+        k: Target number of clusters.
+        no_postproc: If True, skip merging of small clusters.
+
     Returns:
-        dictionary of clusters: dict[str, list[int]] e.g. {'happy': ['id1', 'id2'], 'sad': ['id3', 'id4']},
+        dict[str, list[int]]: Cluster labels mapped to doc ID lists,
+            e.g. ``{'happy': [0, 2], 'sad': [1, 3]}``.
     """
     # Initialize new clusters dictionary
     new_clusters = {}

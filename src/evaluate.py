@@ -1,3 +1,5 @@
+"""Evaluation script for comparing clustering results against ground truth."""
+
 import argparse
 import csv
 import os
@@ -11,10 +13,11 @@ OUTPUT_FILE = None
 
 
 def evaluate(input_csv, ground_truth_csv):
-    """
-    Evaluate clustering results against ground truth.
-    evaluate.csv: id, label
-    ground_truth.csv: id, label
+    """Evaluate clustering results against ground truth.
+
+    Args:
+        input_csv: Path to prediction CSV with columns (id, label).
+        ground_truth_csv: Path to ground truth CSV with columns (id, label).
     """
     label_true = []
     label_pred = []
