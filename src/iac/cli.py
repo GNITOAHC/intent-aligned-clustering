@@ -3,6 +3,8 @@
 import argparse
 import os
 
+from iac.utils.shared import mark_method_evaluated, write_method
+
 
 def run_baseline():
     """Entry point for TF-IDF + K-means++ baseline clustering.
@@ -25,6 +27,7 @@ def run_baseline():
     if args.prompt is None:
         args.prompt = input("Enter your prompt: ")
 
+    write_method(args.output, "baseline", False, "n/a", args.docs)
     baseline(args)
 
 
@@ -50,6 +53,7 @@ def run_bertopic():
     if args.prompt is None:
         args.prompt = input("Enter your prompt: ")
 
+    write_method(args.output, "bertopic", False, "n/a", args.docs)
     bertopic_baseline(args)
 
 
@@ -92,6 +96,7 @@ def run_iac():
         args.prompt = input("Enter your prompt: ")
 
     iac_module.llm = get_llm_instance(args.model)
+    write_method(args.output, "iac", False, args.model, args.docs)
     main(args)
 
 
@@ -121,3 +126,6 @@ def run_evaluate():
     eval_module.OUTPUT_FILE = args.output
 
     evaluate(args.pred, args.ground)
+
+    pred_dir = os.path.dirname(os.path.abspath(args.pred))
+    mark_method_evaluated(pred_dir)
