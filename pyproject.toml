@@ -13,6 +13,12 @@ dependencies = [
     "tqdm>=4.67.1",
 ]
 
+[project.scripts]
+baseline = "iac.cli:run_baseline"
+bertopic = "iac.cli:run_bertopic"
+iac = "iac.cli:run_iac"
+evaluate = "iac.cli:run_evaluate"
+
 [tool.uv.sources]
 cluster-scoring = { git = "https://github.com/GNITOAHC/cluster-scoring.git" }
 
