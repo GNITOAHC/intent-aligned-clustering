@@ -47,6 +47,52 @@ class IACDataset:
         return cls(metadata=metadata, text=texts)
 
     @classmethod
+    def load(cls, source: str) -> "IACDataset":
+        """Dispatch to the appropriate loader based on source type.
+
+        - Ends with ``.csv``           → :meth:`from_csv`
+        - Existing local directory     → :meth:`from_dir`
+        - ``owner/repo:subset``        → :meth:`from_hf` with ``name=subset``
+        - Anything else                → :meth:`from_hf` (HuggingFace dataset ID)
+        """
+        if source.endswith(".csv"):
+            return cls.from_csv(source)
+        if os.path.isdir(source):
+            return cls.from_dir(source)
+        if ":" in source:
+            dataset_id, name = source.rsplit(":", 1)
+            return cls.from_hf(dataset_id, name=name)
+        return cls.from_hf(source)
+
+    @classmethod
+    def from_hf(cls, dataset_id: str, split: str = "train", name: str | None = None) -> "IACDataset":
+        """Load a dataset from HuggingFace Hub with streaming.
+
+        Expects a ``text`` column; all other columns (e.g. ``id``, ``label``) become metadata.
+        """
+        try:
+            from datasets import load_dataset
+        except ImportError as e:
+            raise ImportError(
+                "The 'datasets' package is required to load HuggingFace datasets. "
+                "Install it with: pip install datasets"
+            ) from e
+
+        kwargs: dict = {"streaming": True}
+        if name is not None:
+            kwargs["name"] = name
+
+        ds = load_dataset(dataset_id, split=split, **kwargs)
+
+        metadata, texts = [], []
+        for row in ds:
+            row = dict(row)
+            text = row.pop("text")
+            metadata.append(row)
+            texts.append(text)
+        return cls(metadata=metadata, text=texts)
+
+    @classmethod
     def from_csv(cls, path: str):
         """
         Load dataset from CSV.

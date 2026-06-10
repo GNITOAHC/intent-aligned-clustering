@@ -335,7 +335,7 @@ def cluster_to_k(
 def main(args):
     # fmt: off
     prompt = args.prompt
-    dataset = args.docs.endswith(".csv") and IACDataset.from_csv(args.docs) or IACDataset.from_dir(args.docs)
+    dataset = IACDataset.load(args.docs)
     clusters: dict[str, list] = {}
     cluster_counts = target_cluster_count(llm, prompt)
     log_file, out_file, summary_file, sankey_file = get_output_files(args.output)

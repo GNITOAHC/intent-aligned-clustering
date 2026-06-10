@@ -88,7 +88,7 @@ def bertopic_baseline(args):
     """
     # fmt: off
     prompt = args.prompt
-    dataset = args.docs.endswith(".csv") and IACDataset.from_csv(args.docs) or IACDataset.from_dir(args.docs)
+    dataset = IACDataset.load(args.docs)
     cluster_counts = target_cluster_count(llm, prompt)
     log_file, out_file, summary_file, _ = get_output_files(args.output)
     # fmt: on

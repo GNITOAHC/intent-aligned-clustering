@@ -18,7 +18,7 @@ def run_baseline():
     )
     # fmt: off
     parser.add_argument("--prompt", "-p", type=str, help="Clustering intent prompt")
-    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents (directory or CSV file)")
+    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents: a directory, a CSV file, or a HuggingFace dataset ID (e.g. 'owner/repo' or 'owner/repo:subset')")
     parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for results")
     # fmt: on
     args = parser.parse_args()
@@ -44,7 +44,7 @@ def run_bertopic():
     )
     # fmt: off
     parser.add_argument("--prompt", "-p", type=str, help="Clustering intent prompt")
-    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents (directory or CSV file)")
+    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents: a directory, a CSV file, or a HuggingFace dataset ID (e.g. 'owner/repo' or 'owner/repo:subset')")
     parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for results")
     # fmt: on
     args = parser.parse_args()
@@ -82,7 +82,7 @@ def run_iac():
     )
     # fmt: off
     parser.add_argument("--prompt", "-p", type=str, help="Clustering intent prompt")
-    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents (directory or CSV file)")
+    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to documents: a directory, a CSV file, or a HuggingFace dataset ID (e.g. 'owner/repo' or 'owner/repo:subset')")
     parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for results")
     parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, choices=llm_choices(), help="LLM model to use")
     parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
