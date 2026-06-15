@@ -52,10 +52,11 @@ def save_clustering_results(
     # Save results as CSV
     with open(out_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["id", "label"])
+        writer.writerow(["id", "label", "text"])
         for cluster_name, doc_indices in clusters.items():
             for doc_idx in doc_indices:
-                writer.writerow([doc_idx, cluster_name])
+                _, text = dataset[doc_idx]
+                writer.writerow([doc_idx, cluster_name, text])
 
     # Save cluster summary
     summary = {
