@@ -36,6 +36,7 @@ def save_clustering_results(
     out_file: str,
     summary_file: str = None,
     log_file: str = None,
+    prompt: str = None,
 ) -> dict[str, list]:
     """Save BERTopic clustering results to output directory.
 
@@ -46,6 +47,7 @@ def save_clustering_results(
         summary_file: Path to write the clustering summary JSON to.
         log_file: Path to the run log file. Unused here, kept for parity with
             the baseline result saver.
+        prompt: The clustering intent prompt, recorded in the summary JSON.
 
     Returns:
         Mapping of cluster names (e.g. ``"topic_0"``) to lists of document ids.
@@ -68,6 +70,7 @@ def save_clustering_results(
 
     # Save cluster summary
     summary = {
+        "prompt": prompt,
         "total_documents": len(dataset),
         "num_clusters": len(clusters),
         "cluster_sizes": {name: len(docs) for name, docs in clusters.items()},
@@ -106,7 +109,7 @@ def bertopic_baseline(args):
 
     # Save results
     print("Saving clustering results as CSV...")
-    clusters = save_clustering_results(dataset, topics, out_file, summary_file, log_file)
+    clusters = save_clustering_results(dataset, topics, out_file, summary_file, log_file, prompt)
 
     # Log the process
     with open(log_file, "w", encoding="utf-8") as f:

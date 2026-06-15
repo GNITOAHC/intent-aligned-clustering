@@ -40,6 +40,7 @@ def save_clustering_results(
     out_file: str,
     summary_file: str = None,
     log_file: str = None,
+    prompt: str = None,
 ):
     """Save clustering results to output directory."""
     # Create cluster assignments
@@ -60,6 +61,7 @@ def save_clustering_results(
 
     # Save cluster summary
     summary = {
+        "prompt": prompt,
         "total_documents": len(dataset),
         "num_clusters": len(clusters),
         "cluster_sizes": {name: len(docs) for name, docs in clusters.items()},
@@ -94,7 +96,7 @@ def baseline(args):
     # Save results
     print("Saving clustering results as CSV...")
     save_clustering_results(
-        clusters, dataset, cluster_labels, out_file, summary_file, log_file
+        clusters, dataset, cluster_labels, out_file, summary_file, log_file, prompt
     )
 
     # Log the process
