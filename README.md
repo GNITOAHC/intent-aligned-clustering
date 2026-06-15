@@ -37,7 +37,14 @@ bertopic --docs data/sample/sample.csv --prompt "$(cat data/sample/prompt.txt)" 
 Evaluate clustering results against ground truth (hard metrics):
 
 ```bash
+# Legacy CSV ground truth (id,label):
 evaluate --pred out/sample/out.csv --ground data/sample/sample_gt.csv --output out/sample/eval.json
+
+# HuggingFace dataset that already carries a `label` column:
+evaluate --pred out/sample/out.csv --ground owner/repo:subset --output out/sample/eval.json
+
+# Omit --ground to reuse the dataset recorded in method.json next to --pred:
+evaluate --pred out/sample/out.csv --output out/sample/eval.json
 ```
 
 ### CLI Reference

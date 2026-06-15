@@ -104,7 +104,14 @@ def run_evaluate():
     """Entry point for evaluating clustering results against ground truth.
 
     Parses CLI arguments and delegates to :func:`iac.evaluate.evaluate`.
+
+    When ``--ground`` is omitted, the ground-truth source is read from the
+    ``dataset`` field of ``method.json`` next to ``--pred``. This works when
+    the dataset already carries labels (e.g. a HuggingFace dataset with a
+    ``label`` column).
     """
+    import json
+
     import iac.evaluate as eval_module
     from iac.evaluate import evaluate
 
@@ -113,19 +120,36 @@ def run_evaluate():
     )
     # fmt: off
     parser.add_argument("--pred", "-p", type=str, required=True, help="Prediction CSV with (id, label) columns")
-    parser.add_argument("--ground", "-g", type=str, required=True, help="Ground truth CSV with (id, label) columns")
+    parser.add_argument("--ground", "-g", type=str, default=None, help="Ground truth source: CSV path, directory, or HuggingFace dataset ID (e.g. 'owner/repo' or 'owner/repo:subset'). Defaults to the dataset recorded in method.json next to --pred.")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    parser.add_argument("--output", "-o", type=str, default=None, help="Output JSON file for evaluation results")
+    parser.add_argument("--output", "-o", type=str, default=None, help="Output JSON file for evaluation results (default: 'eval.json' in the same directory as --pred)")
     # fmt: on
     args = parser.parse_args()
 
-    if args.output:
-        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    pred_dir = os.path.dirname(os.path.abspath(args.pred))
+
+    ground = args.ground
+    if ground is None:
+        method_path = os.path.join(pred_dir, "method.json")
+        if not os.path.exists(method_path):
+            parser.error(
+                f"--ground not provided and no method.json found at {method_path}"
+            )
+        with open(method_path, "r", encoding="utf-8") as f:
+            ground = json.load(f).get("dataset")
+        if not ground:
+            parser.error(
+                f"--ground not provided and method.json at {method_path} has no 'dataset' field"
+            )
+
+    if args.output is None:
+        args.output = os.path.join(pred_dir, "eval.json")
+
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
     eval_module.VERBOSE = args.verbose
     eval_module.OUTPUT_FILE = args.output
 
-    evaluate(args.pred, args.ground)
+    evaluate(args.pred, ground)
 
-    pred_dir = os.path.dirname(os.path.abspath(args.pred))
     mark_method_evaluated(pred_dir)

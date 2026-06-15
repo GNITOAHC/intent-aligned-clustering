@@ -73,7 +73,7 @@ def baseline(args):
     dataset = IACDataset.load(args.docs)
     clusters: dict[str, list] = {}
     cluster_counts = target_cluster_count(llm, prompt)
-    log_file, out_file, summary_file = get_output_files(args.output)
+    log_file, out_file, summary_file, _ = get_output_files(args.output)
     # fmt: on
 
     print(f"Processing {len(dataset)} documents...")
