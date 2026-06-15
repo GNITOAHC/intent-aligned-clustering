@@ -3,12 +3,12 @@
 LLM-as-a-Judge: CLI entry point for evaluating clustering quality.
 
 Usage:
-    python -m llm-as-a-judge.judge --output <clustering.csv> --intent <prompt.txt>
-    
+    python -m llm-as-a-judge.judge --output <clustering.csv> --intent "<intent string>"
+
 Example:
     python -m llm-as-a-judge.judge \\
         --output out/out_gpt-oss-20b/out.csv \\
-        --intent data/arxiv/prompt.txt \\
+        --intent "Cluster the articles by primary research subfield" \\
         --model gpt-4o-mini
 """
 
@@ -85,16 +85,16 @@ def create_parser() -> argparse.ArgumentParser:
         epilog="""
 Examples:
   # Basic evaluation
-  python -m llm-as-a-judge.judge -o out/out_gpt-oss-20b/out.csv -i data/arxiv/prompt.txt
+  python -m llm-as-a-judge.judge -o out/out_gpt-oss-20b/out.csv -i "Cluster the articles by primary research subfield"
 
   # With custom weights (emphasize intent alignment)
-  python -m llm-as-a-judge.judge -o out.csv -i prompt.txt -w "A=0.3,B=0.2,C=0.2,D=0.15,E=0.15"
+  python -m llm-as-a-judge.judge -o out.csv -i "<intent>" -w "A=0.3,B=0.2,C=0.2,D=0.15,E=0.15"
 
   # Save markdown report
-  python -m llm-as-a-judge.judge -o out.csv -i prompt.txt -f markdown --save report.md
+  python -m llm-as-a-judge.judge -o out.csv -i "<intent>" -f markdown --save report.md
 
   # Use different model
-  python -m llm-as-a-judge.judge -o out.csv -i prompt.txt -m gpt-4o
+  python -m llm-as-a-judge.judge -o out.csv -i "<intent>" -m gpt-4o
 """,
     )
 
@@ -109,7 +109,7 @@ Examples:
         "--intent",
         "-i",
         required=True,
-        help="Path to intent/prompt file describing the clustering goal",
+        help="Intent/prompt string describing the clustering goal",
     )
 
     # Model configuration
@@ -188,7 +188,7 @@ Examples:
     return parser
 
 
-def validate_paths(output_path: str, intent_path: str) -> None:
+def validate_paths(output_path: str) -> None:
     """
     Validate that required files exist.
 
@@ -197,9 +197,6 @@ def validate_paths(output_path: str, intent_path: str) -> None:
     """
     if not os.path.exists(output_path):
         raise FileNotFoundError(f"Clustering output not found: {output_path}")
-
-    if not os.path.exists(intent_path):
-        raise FileNotFoundError(f"Intent file not found: {intent_path}")
 
 
 def main(args: list[str] | None = None) -> int:
@@ -217,7 +214,7 @@ def main(args: list[str] | None = None) -> int:
 
     try:
         # Validate paths
-        validate_paths(parsed.output, parsed.intent)
+        validate_paths(parsed.output)
 
         # Parse weights if provided
         weights = None
@@ -239,7 +236,7 @@ def main(args: list[str] | None = None) -> int:
         # Run evaluation
         result = judge.evaluate(
             output_csv=parsed.output,
-            intent_file=parsed.intent,
+            intent=parsed.intent,
         )
 
         # Format output
