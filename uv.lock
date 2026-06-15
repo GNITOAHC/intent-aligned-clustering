@@ -608,23 +608,19 @@ dependencies = [
 bertopic = [
     { name = "bertopic" },
 ]
-hf = [
-    { name = "datasets" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "bertopic", marker = "extra == 'bertopic'", specifier = "==0.17.4" },
     { name = "cluster-scoring", git = "https://github.com/GNITOAHC/cluster-scoring.git" },
     { name = "datasets", specifier = ">=5.0.0" },
-    { name = "datasets", marker = "extra == 'hf'", specifier = ">=2.0.0" },
     { name = "ollama", specifier = ">=0.6.0" },
     { name = "openai", specifier = ">=2.7.1" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-provides-extras = ["bertopic", "hf"]
+provides-extras = ["bertopic"]
 
 [[package]]
 name = "jinja2"
