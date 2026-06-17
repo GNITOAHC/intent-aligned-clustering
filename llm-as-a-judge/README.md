@@ -16,12 +16,12 @@ uv sync
 # Basic evaluation
 uv run python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt
+    --intent "Represent the scientific articles by their primary research subfield"
 
 # With custom model and verbose output
 uv run python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt \
+    --intent "Represent the scientific articles by their primary research subfield" \
     --model gpt-4o \
     --verbose
 ```
@@ -81,7 +81,7 @@ Evaluate clustering quality using LLM-based judgment
 options:
   -h, --help            show this help message and exit
   --output, -o OUTPUT   Path to clustering output CSV (columns: id, label, text)
-  --intent, -i INTENT   Path to intent/prompt file describing the clustering goal
+  --intent, -i INTENT   Intent/prompt string describing the clustering goal
   --model, -m {gpt-oss-20b,gpt-oss-120b,Google-Gemma-3-27B,Llama-3.1-70B,gpt-4o-mini,gpt-4o,gpt-3.5-turbo}
                         LLM model to use for evaluation (default: gpt-4o-mini)
   --weights, -w WEIGHTS
@@ -115,7 +115,7 @@ This evaluates every `out/ablation_*` directory produced by `scripts/run_ablatio
 ```bash
 python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt
+    --intent "Represent the scientific articles by their primary research subfield"
 ```
 
 ### Custom Weights (Emphasize Intent Alignment)
@@ -123,7 +123,7 @@ python -m llm-as-a-judge \
 ```bash
 python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt \
+    --intent "Represent the scientific articles by their primary research subfield" \
     --weights "A=0.3,B=0.2,C=0.2,D=0.15,E=0.15"
 ```
 
@@ -132,7 +132,7 @@ python -m llm-as-a-judge \
 ```bash
 python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt \
+    --intent "Represent the scientific articles by their primary research subfield" \
     --format markdown \
     --save evaluation_report.md
 ```
@@ -142,7 +142,7 @@ python -m llm-as-a-judge \
 ```bash
 python -m llm-as-a-judge \
     --output out/out_gpt-oss-20b/out.csv \
-    --intent data/arxiv/prompt.txt \
+    --intent "Represent the scientific articles by their primary research subfield" \
     --model gpt-4o \
     --sample-size 10 \
     --max-clusters 8
@@ -179,7 +179,7 @@ python -m llm-as-a-judge \
   },
   "metadata": {
     "output_csv": "out/out_gpt-oss-20b/out.csv",
-    "intent_file": "data/arxiv/prompt.txt",
+    "intent": "Represent the scientific articles by their primary research subfield",
     "num_clusters": 11,
     "total_items": 504
   }
@@ -220,7 +220,7 @@ judge = ClusterJudge(
 # Run evaluation
 result = judge.evaluate(
     output_csv="out/out_gpt-oss-20b/out.csv",
-    intent_file="data/arxiv/prompt.txt",
+    intent="Represent the scientific articles by their primary research subfield",
 )
 
 # Access results
@@ -261,15 +261,15 @@ id,label,text
 1,Computer Vision,"Paper abstract about CV..."
 ```
 
-### Intent File
+### Intent
 
-A plain text file describing the clustering goal:
+A plain string describing the clustering goal, passed directly via `--intent`:
 
 ```
-Represent the scientific articles by their primary research subfield
-for clustering, for example, machine learning, Robotics, Cryptography.
-Please cluster them into 9 groups.
+Represent the scientific articles by their primary research subfield for clustering, for example, machine learning, Robotics, Cryptography. Please cluster them into 9 groups.
 ```
+
+To use an intent stored in a file, pass its contents inline, e.g. `--intent "$(cat data/arxiv/prompt.txt)"`.
 
 ## Environment Variables
 

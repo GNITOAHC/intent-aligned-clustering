@@ -1,0 +1,521 @@
+"""LLM-based iterative document clustering pipeline."""
+
+import argparse
+import os
+import json
+
+from tqdm import tqdm, trange
+
+from iac.core.prompts import (
+    create_init_cluster_with_sample_prompt,
+    create_cluster_prompt,
+    create_cluster_prompt_sys,
+    create_cluster_refinement_prompt,
+)
+from iac.dataset import IACDataset
+from iac.utils.llm import LLM, get_llm_instance, llm_choices
+from iac.utils.shared import target_cluster_count, get_output_files
+
+DEFAULT_MODEL = "gpt-oss-20b"
+llm = LLM()
+
+
+def log_cluster_step(clusters: dict[str, list], step_name: str):
+    """Logs the state of clusters at a given step."""
+    print(f"\n--- Step: {step_name} ---")
+    if not clusters:
+        print("  No clusters to log.")
+        print("--- End Step ---")
+        return
+    print(f"Total clusters: {len(clusters)}")
+    sorted_clusters = sorted(
+        clusters.items(), key=lambda item: len(item[1]), reverse=True
+    )
+    for name, docs in sorted_clusters:
+        print(f"  - {name}: {len(docs)}")
+    print("--- End Step ---")
+
+
+def get_doc_assignments(clusters: dict[str, list], total_docs: int) -> list[str]:
+    """Returns a list where index is doc_id and value is the cluster label.
+
+    Unassigned documents are labeled 'Unassigned'.
+
+    Args:
+        clusters: Mapping of cluster labels to lists of doc IDs.
+        total_docs: Total number of documents.
+
+    Returns:
+        List of cluster labels indexed by doc_id.
+    """
+    assignments = ["Unassigned"] * total_docs
+    for label, doc_ids in clusters.items():
+        for doc_id in doc_ids:
+            if 0 <= doc_id < total_docs:
+                assignments[doc_id] = label
+    return assignments
+
+
+def normalize_label(label: str) -> str:
+    """Normalize cluster labels to improve consistency"""
+    return (
+        label.strip().lower().replace('"', "").replace("'", "").replace(":", "").strip()
+    )
+
+
+def find_best_matching_cluster(label: str, existing_clusters: list[str]) -> str:
+    """Find the best matching existing cluster using fuzzy matching"""
+    normalized_label = normalize_label(label)
+
+    # First try exact match (case-insensitive)
+    for cluster in existing_clusters:
+        if normalize_label(cluster) == normalized_label:
+            return cluster
+
+    # Then try partial matching for similar concepts
+    for cluster in existing_clusters:
+        normalized_cluster = normalize_label(cluster)
+        if (
+            normalized_label in normalized_cluster
+            or normalized_cluster in normalized_label
+            or
+            # Check for common synonyms/variations
+            any(word in normalized_cluster for word in normalized_label.split())
+            or any(word in normalized_label for word in normalized_cluster.split())
+        ):
+            return cluster
+
+    # If no match found, return the original label
+    return label
+
+
+def initialize_clusters_with_samples(
+    dataset: IACDataset, instruction: str, sample_size: int, seed: int = 42
+) -> dict[str, list]:
+    """Initialize clusters by analyzing a sample of documents to get initial cluster ideas"""
+    import random
+
+    random.seed(seed)
+
+    try:
+        # Sample random documents from the dataset
+        sample_indices = random.sample(
+            range(len(dataset)), min(sample_size, len(dataset))
+        )
+        sample_texts = []
+
+        for idx in sample_indices:
+            _, text = dataset[idx]
+            # Use first 200 chars to keep prompt manageable
+            sample_texts.append(f"Doc{idx}: {text[:200]}...")
+
+        # Create initialization prompt
+        init_prompt = create_init_cluster_with_sample_prompt(instruction, sample_texts)
+
+        response, _, _ = llm.generate(
+            init_prompt, "You are an expert at document clustering and categorization."
+        )
+
+        # Parse cluster labels from response
+        initial_clusters = {}
+        for line in response.strip().split("\n"):
+            label = line.strip().strip('"-').strip()
+            if label and len(label) > 0:
+                initial_clusters[label] = []
+
+        print(
+            f"    Generated {len(initial_clusters)} initial clusters: {list(initial_clusters.keys())}"
+        )
+        log_cluster_step(initial_clusters, "init")
+        return initial_clusters
+
+    except Exception as e:
+        print(f"    Error initializing clusters: {e}")
+        return {}
+
+
+def refine_cluster_labels(
+    clusters: dict[str, list], instruction: str
+) -> dict[str, list]:
+    """Refine cluster labels for better consistency and clarity"""
+    try:
+        refinement_prompt = create_cluster_refinement_prompt(clusters, instruction)
+        response, _, _ = llm.generate(refinement_prompt)
+
+        # Parse the refinement suggestions
+        refined_clusters = {}
+        lines = response.strip().split("\n")
+
+        for line in lines:
+            line = line.strip()
+            if "->" in line:
+                parts = line.split("->")
+                if len(parts) >= 2:
+                    old_label = parts[0].strip().strip("\"'")
+                    action = parts[1].strip()
+
+                    if old_label in clusters:
+                        if action.upper() == "KEEP":
+                            refined_clusters[old_label] = clusters[old_label]
+                        elif action.upper().startswith("RENAME_TO:"):
+                            new_label = action[10:].strip()  # Remove "RENAME_TO:"
+                            if new_label:
+                                refined_clusters[new_label] = clusters[old_label]
+                            else:
+                                refined_clusters[old_label] = clusters[old_label]
+
+        # If refinement failed or didn't cover all clusters, keep originals
+        if len(refined_clusters) != len(clusters):
+            print("    Refinement incomplete, keeping original labels")
+            return clusters
+
+        print(
+            f"    Refined {len([k for k in refined_clusters.keys() if k not in clusters])} cluster labels"
+        )
+        log_cluster_step(refined_clusters, "refine")
+        return refined_clusters
+
+    except Exception as e:
+        print(f"    Error during refinement: {e}")
+        return clusters
+
+
+def merge_small_clusters(
+    clusters: dict[str, list], k: int, pass_num: int = 0
+) -> dict[str, list]:
+    """Merge small clusters (size 1) into the largest cluster to reduce cluster count.
+
+    Args:
+        clusters: Dictionary of cluster labels to doc ID lists.
+        k: Target number of clusters.
+        pass_num: Merge pass number for logging.
+
+    Returns:
+        Dictionary of clusters after merging.
+    """
+    if len(clusters) <= k * 1.5:
+        return clusters
+
+    # Sort clusters by size (smallest first)
+    sorted_clusters = sorted(clusters.items(), key=lambda x: len(x[1]))
+
+    # Identify clusters to merge (size 1 clusters)
+    clusters_to_merge = []
+    for small_cluster, docs in sorted_clusters:
+        if len(docs) == 1 and len(clusters_to_merge) < len(clusters) - k:
+            clusters_to_merge.append((small_cluster, docs))
+
+    # Merge small clusters into the largest cluster
+    if clusters_to_merge and len(clusters) > k:
+        largest_cluster = max(clusters.items(), key=lambda x: len(x[1]))[0]
+        for small_cluster, docs in clusters_to_merge:
+            if small_cluster != largest_cluster:
+                clusters[largest_cluster].extend(docs)
+                del clusters[small_cluster]
+
+        if pass_num > 0:
+            print(
+                f"  Merge pass {pass_num}: Merged {len(clusters_to_merge)} small clusters into '{largest_cluster}'"
+            )
+        else:
+            print(
+                f"  Merged {len(clusters_to_merge)} small clusters into '{largest_cluster}'"
+            )
+
+    return clusters
+
+
+def cluster_to_k(
+    dataset: IACDataset, clusters: dict[str, list], instruction: str, k: int,
+    no_postproc: bool = False,
+) -> dict[str, list]:
+    """Cluster documents into k clusters using the provided clusters as prior knowledge.
+
+    Args:
+        dataset: IACDataset containing the documents.
+        clusters: Existing clusters used as prior knowledge.
+        instruction: Prompt/instruction guiding cluster semantics.
+        k: Target number of clusters.
+        no_postproc: If True, skip merging of small clusters.
+
+    Returns:
+        dict[str, list[int]]: Cluster labels mapped to doc ID lists,
+            e.g. ``{'happy': [0, 2], 'sad': [1, 3]}``.
+    """
+    # Initialize new clusters dictionary
+    new_clusters = {}
+
+    # Get existing cluster types (labels)
+    cluster_types = list(clusters.keys())
+
+    # Get system prompt for classification
+    sys_prompt = create_cluster_prompt_sys()
+
+    # Track statistics for debugging
+    label_changes = 0
+    errors = 0
+
+    # Process each document individually to avoid context window issues
+    for doc_id, (metadata, text) in enumerate(
+        tqdm(dataset, desc="Clustering documents")
+    ):
+        # Skip very short or empty documents
+        if not text or len(text.strip()) < 10:
+            fallback_label = cluster_types[0] if cluster_types else "empty"
+            if fallback_label not in new_clusters:
+                new_clusters[fallback_label] = []
+            new_clusters[fallback_label].append(doc_id)
+            continue
+
+        # Create prompt for this specific document
+        prompt = create_cluster_prompt(cluster_types, instruction, text)
+
+        # Get LLM response for cluster assignment
+        try:
+            raw_response, _, _ = llm.generate(prompt, sys_prompt)
+
+            # Clean and normalize the response
+            cluster_label = raw_response.strip()
+
+            # Remove common prefixes/suffixes that LLM might add
+            prefixes_to_remove = ["cluster:", "label:", "category:", "class:"]
+            for prefix in prefixes_to_remove:
+                if cluster_label.lower().startswith(prefix):
+                    cluster_label = cluster_label[len(prefix) :].strip()
+
+            # Remove quotes and clean up
+            cluster_label = cluster_label.strip("\"'").strip()
+
+            # If empty after cleaning, use fallback
+            if not cluster_label:
+                cluster_label = cluster_types[0] if cluster_types else "unknown"
+
+            # Try to match with existing clusters for consistency
+            if cluster_types:
+                matched_label = find_best_matching_cluster(cluster_label, cluster_types)
+                if matched_label != cluster_label:
+                    cluster_label = matched_label
+                    label_changes += 1
+
+            # Add document to the assigned cluster
+            if cluster_label not in new_clusters:
+                new_clusters[cluster_label] = []
+            new_clusters[cluster_label].append(doc_id)
+
+        except Exception as e:
+            errors += 1
+            print(f"Error processing document {doc_id}: {e}")
+            # Fallback: assign to first existing cluster or create 'error' cluster
+            fallback_label = cluster_types[0] if cluster_types else "error"
+            if fallback_label not in new_clusters:
+                new_clusters[fallback_label] = []
+            new_clusters[fallback_label].append(doc_id)
+
+    log_cluster_step(new_clusters, "generated")
+
+    # Print statistics
+    print(f"  Label normalizations: {label_changes}, Errors: {errors}")
+
+    # Post-processing: merge very small clusters if we have too many
+    if not no_postproc:
+        for merge_pass in range(1, 3):
+            clusters_before_merge = len(new_clusters)
+            new_clusters = merge_small_clusters(new_clusters, k, merge_pass)
+            if len(new_clusters) < clusters_before_merge:
+                log_cluster_step(new_clusters, f"merge_pass_{merge_pass}")
+            if len(new_clusters) <= k * 1.5:
+                break
+
+    # Ensure we don't have empty clusters and maintain consistency
+    filtered_clusters = {label: docs for label, docs in new_clusters.items() if docs}
+
+    return filtered_clusters
+
+
+def main(args):
+    # fmt: off
+    prompt = args.prompt
+    dataset = IACDataset.load(args.docs)
+    clusters: dict[str, list] = {}
+    cluster_counts = target_cluster_count(llm, prompt)
+    log_file, out_file, summary_file, sankey_file = get_output_files(args.output)
+    # fmt: on
+
+    ##############
+    # Print info #
+    ##############
+    print(f"Prompt: {prompt}")
+    print(f"Documents: {len(dataset)}")
+    print(f"Target Cluster Count: {cluster_counts}")
+    print("log_file:", log_file)
+    print("out_file:", out_file)
+    print("summary_file:", summary_file)
+    print("sankey_file:", sankey_file)
+
+    # Run clustering rounds
+    round = 0
+    history = []
+
+    for r in trange(args.max_rounds, desc="Clustering rounds"):
+        print(f"\n=== Round {r + 1} ===")
+
+        # For the first round, sample a few documents to get initial cluster ideas
+        if r == 0 and len(clusters) == 0:
+            print("  Initializing clusters with sample documents...")
+            clusters = initialize_clusters_with_samples(
+                dataset, prompt, min(10, len(dataset) // 10), seed=args.seed
+            )
+
+        clusters = cluster_to_k(dataset, clusters, prompt, cluster_counts, no_postproc=args.no_postproc)
+
+        # Track history
+        history.append(
+            {
+                "round": r + 1,
+                "step": "clustering",
+                "assignments": get_doc_assignments(clusters, len(dataset)),
+            }
+        )
+
+        print(f"Clusters after round {r + 1}: {len(clusters)} clusters")
+        for cluster_name, doc_ids in clusters.items():
+            print(f"  {cluster_name}: {len(doc_ids)} documents")
+
+        # Refine cluster labels every 2 rounds to improve consistency
+        if r > 0 and (r + 1) % 2 == 0 and len(clusters) > 1:
+            print("  Refining cluster labels...")
+            clusters = refine_cluster_labels(clusters, prompt)
+
+            # Track history
+            history.append(
+                {
+                    "round": r + 1,
+                    "step": "refinement",
+                    "assignments": get_doc_assignments(clusters, len(dataset)),
+                }
+            )
+
+        # Check if we've reached the target number of clusters
+        if len(clusters) == cluster_counts:
+            print(f"Reached target cluster count ({cluster_counts}) in round {r + 1}")
+            round = r
+            break
+
+        round = r
+
+    # Final cluster quality check and cleanup
+    print("\n=== Final Processing ===")
+
+    if args.no_postproc:
+        print("  Post-processing disabled (--no_postproc); skipping final cleanup.")
+    else:
+        # Remove any clusters that are too small (less than 1% of total documents)
+        # limiation: if the corpus distribution is too sparse, there might be small amount of cluster left
+        min_cluster_size = max(1, len(dataset) // 100)
+        large_clusters = {
+            name: docs for name, docs in clusters.items() if len(docs) >= min_cluster_size
+        }
+
+        if len(large_clusters) < len(clusters):
+            # Merge small clusters into the largest cluster
+            small_clusters = {
+                name: docs
+                for name, docs in clusters.items()
+                if len(docs) < min_cluster_size
+            }
+            if large_clusters:
+                # get max instances from the largest cluster
+                largest_cluster = max(large_clusters.items(), key=lambda x: len(x[1]))[0]
+                # merge
+                for small_name, small_docs in small_clusters.items():
+                    large_clusters[largest_cluster].extend(small_docs)
+                print(
+                    f"Merged {len(small_clusters)} small clusters into '{largest_cluster}'"
+                )
+                clusters = large_clusters
+                log_cluster_step(clusters, "final_cleanup_merge")
+
+                # Track history
+                history.append(
+                    {
+                        "round": "final",
+                        "step": "cleanup",
+                        "assignments": get_doc_assignments(clusters, len(dataset)),
+                    }
+                )
+
+    # Save results
+    print("\nFinal clustering results:")
+    print(f"Total clusters: {len(clusters)}")
+    print("Cluster distribution:")
+    sorted_clusters = sorted(clusters.items(), key=lambda x: len(x[1]), reverse=True)
+    for name, docs in sorted_clusters:
+        percentage = (len(docs) / len(dataset)) * 100
+        print(f"  {name}: {len(docs)} documents ({percentage:.1f}%)")
+
+    # Save cluster results to output file
+    try:
+        import csv
+
+        with open(out_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["id", "label", "text"])
+
+            for cluster_label, doc_ids in clusters.items():
+                for doc_id in doc_ids:
+                    _, text = dataset[doc_id]
+                    writer.writerow([doc_id, cluster_label, text])
+
+        print(f"Results saved to: {out_file}")
+
+        # Save summary
+        summary = {
+            "prompt": prompt,
+            "model": args.model,
+            "total_documents": len(dataset),
+            "target_clusters": cluster_counts,
+            "actual_clusters": len(clusters),
+            "rounds_completed": min(round + 1, args.max_rounds),
+            "clusters": {name: len(docs) for name, docs in clusters.items()},
+            "cum_prompt_tokens": llm.cum_prompt_tokens,
+            "cum_completion_tokens": llm.cum_completion_tokens,
+        }
+
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2)
+
+        print(f"Summary saved to: {summary_file}")
+
+        # Save sankey data
+        with open(sankey_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2)
+
+        print(f"Sankey data saved to: {sankey_file}")
+
+    except Exception as e:
+        print(f"Error saving results: {e}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="intent-aligned-clustering tool")
+    # fmt: off
+    parser.add_argument("--prompt", "-p", type=str, help="Prompt to use for clustering")
+    parser.add_argument("--docs", "-d", type=str, required=True, help="Path to the documents, either a directory or a CSV file")
+    parser.add_argument("--output", "-o", type=str, default="./out", help="Output directory for experiments")
+    # parser.add_argument("--ground_truth", "-g", type=str, default=None, help="Ground truth file for evaluation")
+    parser.add_argument("--model", "-m", type=str, default=DEFAULT_MODEL, choices=llm_choices(), help="LLM model to use")
+    parser.add_argument("--max_rounds", "-r", type=int, default=5, help="Maximum number of clustering rounds")
+    parser.add_argument("--seed", "-s", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--no_postproc", action="store_true", help="Disable post-processing (merge_small_clusters + final cleanup)")
+    # fmt: on
+    args = parser.parse_args()
+
+    if not os.path.exists(args.output):
+        os.makedirs(args.output, exist_ok=True)
+
+    if args.prompt is None:
+        args.prompt = input("Enter your prompt: ")
+
+    llm = get_llm_instance(args.model)
+
+    main(args)

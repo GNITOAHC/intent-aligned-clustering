@@ -125,19 +125,6 @@ class ClusterJudge:
 
         return clusters
 
-    def _load_intent(self, intent_file: str) -> str:
-        """
-        Load clustering intent from file.
-
-        Args:
-            intent_file: Path to the intent/prompt file
-
-        Returns:
-            Intent string
-        """
-        with open(intent_file, "r", encoding="utf-8") as f:
-            return f.read().strip()
-
     def _call_llm_with_retry(self, prompt: str, sys_prompt: str) -> dict[str, Any]:
         """
         Call LLM and parse JSON response with retry logic.
@@ -344,14 +331,14 @@ class ClusterJudge:
     def evaluate(
         self,
         output_csv: str,
-        intent_file: str,
+        intent: str,
     ) -> EvaluationResult:
         """
         Evaluate clustering quality across all five dimensions.
 
         Args:
             output_csv: Path to clustering output CSV (columns: id, label, text)
-            intent_file: Path to intent/prompt file
+            intent: Intent/prompt string describing the clustering goal
 
         Returns:
             Complete EvaluationResult with scores for all dimensions
@@ -367,8 +354,7 @@ class ClusterJudge:
             f"Loaded {len(clusters)} clusters with {sum(c.size for c in clusters.values())} total items"
         )
 
-        self._log(f"Loading intent from {intent_file}")
-        intent = self._load_intent(intent_file)
+        self._log("Using intent provided as input string")
 
         # Score each dimension
         dimension_scores: dict[str, DimensionScore] = {}
@@ -398,7 +384,7 @@ class ClusterJudge:
             ),
             metadata={
                 "output_csv": str(output_csv),
-                "intent_file": str(intent_file),
+                "intent": str(intent),
                 "num_clusters": len(clusters),
                 "total_items": sum(c.size for c in clusters.values()),
             },

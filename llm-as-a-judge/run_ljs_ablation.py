@@ -175,7 +175,7 @@ def main():
             try:
                 result = judge.evaluate(
                     output_csv=str(out_csv),
-                    intent_file=str(intent_file),
+                    intent=intent_file.read_text(encoding="utf-8").strip(),
                 )
                 row = result.to_dict()
                 print(f"  -> final_score={row['final_score']:.3f}  "
